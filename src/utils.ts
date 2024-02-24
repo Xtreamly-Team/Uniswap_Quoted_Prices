@@ -14,3 +14,8 @@ export function toReadableAmount(rawAmount: number, decimals: number): string {
     .formatUnits(rawAmount, decimals)
     .slice(0, READABLE_FORM_LEN)
 }
+
+export function convertPriceX96ToPrice(priceX96: string, decimalIn: number, decimalOut: number): number {
+    const sqrtPrice = (+priceX96) / (2 ** 96)
+    return (sqrtPrice ** 2) * (10 ** (decimalIn - decimalOut))
+}

@@ -1,25 +1,16 @@
-import { CurrentConfig } from "./config.js";
-import { toReadableAmount } from "./conversion.js";
-import { quote, quoteV2 } from "./quote.js";
+import { FeeAmount } from "@uniswap/v3-sdk";
+import { USDT_TOKEN, WETH_TOKEN } from "./constants.js";
+import { uniswapQuote } from "./quote.js";
+import { convertPriceX96ToPrice } from "./utils.js"
 
 const main = async () => {
-    let quotedPrice = await quote('1')
-    console.log(quotedPrice)
-    let quotedV2Output = await quoteV2('1')
-    console.log(quotedV2Output)
-
-    // console.log(toReadableAmount(price, CurrentConfig.tokens.out.decimals))
-    // const writeApi = await initializeInflux()
-    // const exchangeStatus = ExchangeStatus
-    // setInterval(async () => {
-    //     console.log(
-    //         JSON.stringify({
-    //             timestamp: Date.now(),
-    //             price: +(await quote())
-    //         })
-    //     )
-    //
-    // }, 1000);
+    let quotedV2Output = await uniswapQuote(1000, 
+        WETH_TOKEN.address, WETH_TOKEN.decimals, 
+        USDT_TOKEN.address, USDT_TOKEN.decimals,
+        FeeAmount.LOW,
+        19297545
+    )
+    
 }
 
 main()

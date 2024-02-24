@@ -1,68 +1,51 @@
 import { ethers } from 'ethers'
-import { CurrentConfig } from './config.js'
-import { computePoolAddress } from '@uniswap/v3-sdk'
-import Quoter from '@uniswap/v3-periphery/artifacts/contracts/lens/Quoter.sol/Quoter.json' assert { type: 'json' };
-import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json' assert { type: 'json' };
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json' assert { type: 'json' };
+import Quoter2 from '@uniswap/v3-periphery/artifacts/contracts/lens/QuoterV2.sol/QuoterV2.json' assert { type: 'json' };
 import {
-    POOL_FACTORY_CONTRACT_ADDRESS,
     QUOTERV2_CONTRACT_ADDRESS,
-    QUOTER_CONTRACT_ADDRESS,
 } from './constants.js'
 import { getProvider } from './providers.js'
-import { toReadableAmount, fromReadableAmount } from './conversion.js'
+import { toReadableAmount, fromReadableAmount, convertPriceX96ToPrice } from './utils.js'
 
-export async function quote(amountIn: string, blockNumber?: number): Promise<string> {
-    console.log(blockNumber)
-    const quoterContract = new ethers.Contract(
-        QUOTER_CONTRACT_ADDRESS,
-        Quoter.abi,
-        getProvider()
-    )
-    const poolConstants = await getPoolConstants()
-
-    const quotedAmountOut = await quoterContract.callStatic.quoteExactInputSingle(
-        poolConstants.token0,
-        poolConstants.token1,
-        poolConstants.fee,
-        fromReadableAmount(
-            // `${CurrentConfig.tokens.amountIn}`,
-            amountIn,
-            CurrentConfig.tokens.in.decimals
-        ).toString(),
-        0,
-        {
-            blockTag: blockNumber
-        }
-    )
-
-    return toReadableAmount(quotedAmountOut, CurrentConfig.tokens.out.decimals)
+type UniswapQuoteResult = {
+    amountIn: number,
+    amountOut: number,
+    quotedPrice: number,
+    poolPriceBefore: number,
+    poolPriceAfter: number,
+    priceImpact: number,
+    priceImpactPercentage: number
 }
 
+export async function uniswapQuote(
+    amountIn: number, 
+    tokenIn: string,
+    decimalIn: number,
+    tokenOut: string,
+    decimalOut: number,
+    poolFee: number,
+    blockNumber?: number
+): Promise<UniswapQuoteResult> {
 
-export async function quoteV2(amountIn: string, blockNumber?: number): Promise<Object> {
-    console.log(blockNumber)
     const quoterV2Contract = new ethers.Contract(
         QUOTERV2_CONTRACT_ADDRESS,
         Quoter2.abi,
         getProvider()
     )
-    const poolConstants = await getPoolConstants()
 
     const params = {
-        tokenIn: poolConstants.token0,
-        tokenOut: poolConstants.token1,
-        fee: poolConstants.fee,
+        tokenIn: tokenIn,
+        tokenOut: tokenOut,
+        fee: poolFee,
         amountIn:
             fromReadableAmount(
-                // `${CurrentConfig.tokens.amountIn}`,
-                amountIn,
-                CurrentConfig.tokens.in.decimals
+                `${amountIn}`,
+                decimalIn,
             ).toString(),
         sqrtPriceLimitX96: 0,
     }
 
-    let output;
+    let output: any;
 
     if (blockNumber) {
         output = await quoterV2Contract.callStatic.quoteExactInputSingle(
@@ -77,58 +60,59 @@ export async function quoteV2(amountIn: string, blockNumber?: number): Promise<O
         )
     }
 
-
-
-    console.log(output.sqrtPriceX96After.toString())
-
-    const sqrtPriceAfter = (+output.sqrtPriceX96After.toString()) / (2 ** 96)
-
-    const priceAfter = (sqrtPriceAfter ** 2) * (10 ** (CurrentConfig.tokens.in.decimals - CurrentConfig.tokens.out.decimals))
+    const priceAfter = convertPriceX96ToPrice(output.sqrtPriceX96After.toString(), decimalIn, decimalOut)
 
     const amountOut = +toReadableAmount(output.amountOut.toString(), 6)
 
-    const price = amountOut / +amountIn
+    const quotedPrice = amountOut / amountIn
 
-    const priceImpact = ((priceAfter - price) / price) * 100
+    const poolPrice = await uniswapGetPoolPrice('0x11b815efb8f581194ae79006d24e0d814b7697f6', decimalIn, decimalOut, blockNumber)
+
+    const priceImpact = priceAfter - poolPrice
+
+    const priceImpactPercentage = (priceImpact / poolPrice) * 100
 
     const res = {
+        amountIn: amountIn,
         amountOut: amountOut,
-        price: price,
-        priceAfter: priceAfter,
-        priceImpact: priceImpact
+        poolPriceBefore: poolPrice,
+        quotedPrice: quotedPrice,
+        poolPriceAfter: priceAfter,
+        priceImpact: priceImpact,
+        priceImpactPercentage: priceImpactPercentage
     }
+
 
     return res
 }
 
-async function getPoolConstants(): Promise<{
-    poolAddress: string
-    token0: string
-    token1: string
-    fee: number
-}> {
-    const poolAddress = computePoolAddress({
-        factoryAddress: POOL_FACTORY_CONTRACT_ADDRESS,
-        tokenA: CurrentConfig.tokens.in,
-        tokenB: CurrentConfig.tokens.out,
-        fee: CurrentConfig.tokens.poolFee,
-    })
+async function uniswapGetPoolPrice(
+    poolAddress: string,
+    decimalIn: number,
+    decimalOut: number,
+    blockNumber?: number
+): Promise<number> {
 
     const poolContract = new ethers.Contract(
         poolAddress,
         IUniswapV3PoolABI.abi,
         getProvider()
     )
-    const [token0, token1, fee] = await Promise.all([
-        poolContract.token0(),
-        poolContract.token1(),
-        poolContract.fee(),
-    ])
 
-    return {
-        poolAddress,
-        token0,
-        token1,
-        fee,
+    let res: any;
+
+    if (blockNumber) {
+        res = await poolContract.callStatic.slot0(
+            {
+                blockTag: blockNumber
+            }
+        )
+    } else {
+        res = await poolContract.callStatic.slot0()
     }
+
+    const price = convertPriceX96ToPrice(res.sqrtPriceX96.toString(), decimalIn, decimalOut)
+
+    return price
+
 }

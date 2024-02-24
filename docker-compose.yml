@@ -1,0 +1,6 @@
+services:
+  web:
+    build: .
+    command: npm run serve
+    ports:
+      - "3500:3500"

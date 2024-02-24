@@ -1,8 +1,5 @@
 import { ethers, providers } from 'ethers'
-import { CurrentConfig } from './config.js'
-
-// Provider Functions
 
 export function getProvider(): providers.Provider {
-  return new ethers.providers.JsonRpcProvider(CurrentConfig.rpc.mainnet)
+  return new ethers.providers.JsonRpcProvider('https://mainnet.infura.io/v3/989a33ef7f114f45b58346df500b9917')
 }
