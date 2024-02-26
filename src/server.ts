@@ -20,7 +20,7 @@ app.post('/api/quote_prices', async (req, res) => {
     console.log(tokenOut)
     console.log(decimalOut)
     console.log(poolFee)
-    
+
 
     let blockNumber = req.body.blockNumber
 
@@ -29,13 +29,19 @@ app.post('/api/quote_prices', async (req, res) => {
         return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    // Process the parameters (in this example, just echoing them back)
-    // const result = { param1, param2, param3 };
-    let quotedV2Output = await uniswapQuote(1000,
-        tokenIn, decimalIn, tokenOut, decimalOut, poolFee, blockNumber)
+    try {
 
-    // Send the JSON response
-    res.json(quotedV2Output);
+        // Process the parameters (in this example, just echoing them back)
+        // const result = { param1, param2, param3 };
+        let quotedV2Output = await uniswapQuote(amountIn,
+            tokenIn, decimalIn, tokenOut, decimalOut, poolFee, blockNumber)
+
+        // Send the JSON response
+        res.json(quotedV2Output);
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: error });
+    }
 });
 
 // Start the server
