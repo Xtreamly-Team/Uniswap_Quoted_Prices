@@ -12,7 +12,7 @@ app.use(bodyParser.json());
 // POST endpoint with multiple query parameters
 app.post('/api/quote_prices', async (req, res) => {
     // Retrieve query parameters from the request body
-    const { amountIn, tokenIn, decimalIn, tokenOut, decimalOut, poolFee } = req.body;
+    const { amountIn, tokenIn, decimalIn, tokenOut, decimalOut, poolFee, poolAddress } = req.body;
 
     console.log(amountIn)
     console.log(tokenIn)
@@ -20,12 +20,13 @@ app.post('/api/quote_prices', async (req, res) => {
     console.log(tokenOut)
     console.log(decimalOut)
     console.log(poolFee)
+    console.log(poolAddress)
 
 
     let blockNumber = req.body.blockNumber
 
     // Check if required parameters are present
-    if (!amountIn || !tokenIn || !decimalIn || !tokenOut || !decimalOut || !poolFee) {
+    if (!amountIn || !tokenIn || !decimalIn || !tokenOut || !decimalOut || !poolFee || !poolAddress) {
         return res.status(400).json({ error: 'Missing required parameters' });
     }
 
@@ -34,7 +35,7 @@ app.post('/api/quote_prices', async (req, res) => {
         // Process the parameters (in this example, just echoing them back)
         // const result = { param1, param2, param3 };
         let quotedV2Output = await uniswapQuote(amountIn,
-            tokenIn, decimalIn, tokenOut, decimalOut, poolFee, blockNumber)
+            tokenIn, decimalIn, tokenOut, decimalOut, poolFee, poolAddress, blockNumber)
 
         // Send the JSON response
         res.json(quotedV2Output);

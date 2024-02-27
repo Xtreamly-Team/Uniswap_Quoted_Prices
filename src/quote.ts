@@ -24,6 +24,7 @@ export async function uniswapQuote(
     tokenOut: string,
     decimalOut: number,
     poolFee: number,
+    poolAddress: string,
     blockNumber?: number
 ): Promise<UniswapQuoteResult> {
 
@@ -66,7 +67,7 @@ export async function uniswapQuote(
 
     const quotedPrice = amountOut / amountIn
 
-    const poolPrice = await uniswapGetPoolPrice('0x11b815efb8f581194ae79006d24e0d814b7697f6', decimalIn, decimalOut, blockNumber)
+    const poolPrice = await uniswapGetPoolPrice(poolAddress, decimalIn, decimalOut, blockNumber)
 
     const priceImpact = priceAfter - poolPrice
 
