@@ -62,7 +62,7 @@ export async function uniswapQuote(
 
     const priceAfter = convertPriceX96ToPrice(output.sqrtPriceX96After.toString(), decimalIn, decimalOut)
 
-    const amountOut = +toReadableAmount(output.amountOut.toString(), 6)
+    const amountOut = +toReadableAmount(output.amountOut.toString(), decimalOut)
 
     const quotedPrice = amountOut / amountIn
 
